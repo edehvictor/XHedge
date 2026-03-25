@@ -17,6 +17,7 @@ import { generateMockData, DataPoint } from "@/lib/chart-data";
 import TermsModal from "@/components/TermsModal";
 import PrivacyModal from "@/components/PrivacyModal";
 import { Modal } from "@/components/ui/modal";
+import SigningOverlay, { SigningStep } from "@/components/SigningOverlay";
 
 const CONTRACT_ID = process.env.NEXT_PUBLIC_CONTRACT_ID || "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
 
@@ -28,6 +29,8 @@ export default function VaultPage() {
   const [activeTab, setActiveTab] = useState<TabType>("deposit");
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
+  const [signingStep, setSigningStep] = useState<SigningStep>("idle");
+  const [signingErrorMessage, setSigningErrorMessage] = useState("");
   const [estimatedFee, setEstimatedFee] = useState<string | null>(null);
   const [estimatingFee, setEstimatingFee] = useState(false);
   const [chartLoading, setChartLoading] = useState(false);
@@ -145,6 +148,9 @@ export default function VaultPage() {
     }
 
     setLoading(true);
+    setStatus({ type: null, message: "" });
+    setSigningErrorMessage("");
+    setSigningStep("preparing");
 
     const toastId = toast.loading("Processing deposit…");
     try {
@@ -166,12 +172,14 @@ export default function VaultPage() {
         throw new Error(assembleError || "Failed to assemble transaction");
       }
 
+      setSigningStep("signing");
       const { signedTxXdr, error: signError } = await signTransaction(assembledXdr, passphrase);
 
       if (signError || !signedTxXdr) {
         throw new Error(signError || "Failed to sign transaction");
       }
 
+      setSigningStep("submitting");
       const { hash, error: submitError } = await submitTransaction(signedTxXdr, network);
 
       if (submitError || !hash) {
@@ -183,6 +191,18 @@ export default function VaultPage() {
       await loadVaultData();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Deposit failed", { id: toastId });
+      setSigningStep("success");
+      setStatus({ type: "success", message: `Deposit successful! Transaction: ${hash.slice(0, 8)}...` });
+      setAmount("");
+      await loadVaultData();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Deposit failed";
+      setSigningErrorMessage(msg);
+      setSigningStep("error");
+      setStatus({
+        type: "error",
+        message: msg,
+      });
     } finally {
       setLoading(false);
     }
@@ -201,6 +221,9 @@ export default function VaultPage() {
     }
 
     setLoading(true);
+    setStatus({ type: null, message: "" });
+    setSigningErrorMessage("");
+    setSigningStep("preparing");
 
     const toastId = toast.loading("Processing withdrawal…");
     try {
@@ -222,12 +245,14 @@ export default function VaultPage() {
         throw new Error(assembleError || "Failed to assemble transaction");
       }
 
+      setSigningStep("signing");
       const { signedTxXdr, error: signError } = await signTransaction(assembledXdr, passphrase);
 
       if (signError || !signedTxXdr) {
         throw new Error(signError || "Failed to sign transaction");
       }
 
+      setSigningStep("submitting");
       const { hash, error: submitError } = await submitTransaction(signedTxXdr, network);
 
       if (submitError || !hash) {
@@ -239,6 +264,18 @@ export default function VaultPage() {
       await loadVaultData();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Withdrawal failed", { id: toastId });
+      setSigningStep("success");
+      setStatus({ type: "success", message: `Withdraw successful! Transaction: ${hash.slice(0, 8)}...` });
+      setAmount("");
+      await loadVaultData();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Withdraw failed";
+      setSigningErrorMessage(msg);
+      setSigningStep("error");
+      setStatus({
+        type: "error",
+        message: msg,
+      });
     } finally {
       setLoading(false);
     }
@@ -461,6 +498,12 @@ export default function VaultPage() {
         onClose={() => setShowPrivacyModal(false)}
         onAccept={handlePrivacyAccept}
         showAcceptCheckbox={true}
+      />
+
+      <SigningOverlay
+        step={signingStep}
+        errorMessage={signingErrorMessage}
+        onDismiss={() => setSigningStep("idle")}
       />
 
       {/* Legal Warning Modal */}
