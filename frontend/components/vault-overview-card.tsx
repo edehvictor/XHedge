@@ -7,11 +7,10 @@ import { useNetwork } from "@/app/context/NetworkContext";
 import { useCurrency } from "@/app/context/CurrencyContext";
 import { fetchVaultData, VaultMetrics } from "@/lib/stellar";
 import { formatNumber } from "@/lib/utils";
+import { getVolatilityShieldAddress } from "@/lib/contracts.config";
 import { useStaleData } from "@/hooks/use-stale-data";
 import { StaleBadge } from "@/components/StaleBadge";
 import { VaultOverviewSkeleton } from "@/components/ui/skeleton";
-
-const CONTRACT_ID = process.env.NEXT_PUBLIC_CONTRACT_ID || "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
 
 export function VaultOverviewCard() {
   const { connected, address } = useWallet();
@@ -28,7 +27,11 @@ export function VaultOverviewCard() {
     }
 
     try {
-      const data = await fetchVaultData(CONTRACT_ID, address, network);
+      const data = await fetchVaultData(
+        getVolatilityShieldAddress(network),
+        address,
+        network
+      );
       setData(data);
     } catch (error) {
       console.error("Failed to fetch vault data:", error);
@@ -88,14 +91,14 @@ export function VaultOverviewCard() {
           subtitle={metrics?.assetSymbol || "USDC"}
           icon={<TrendingUp className="w-4 h-4 text-green-500" />}
         />
-        
+
         <MetricCard
           title="Total Shares"
           value={formatNumber(totalShares)}
           subtitle="XHS"
           icon={<TrendingUp className="w-4 h-4 text-blue-500" />}
         />
-        
+
         <MetricCard
           title="Share Price"
           value={format(sharePrice)}
@@ -103,7 +106,7 @@ export function VaultOverviewCard() {
           icon={<TrendingUp className="w-4 h-4 text-primary" />}
           highlight
         />
-        
+
         <MetricCard
           title="Your Balance"
           value={connected ? format(userBalance) : "—"}
