@@ -2,7 +2,7 @@
 use super::*;
 use soroban_sdk::token::Client as TokenClient;
 use soroban_sdk::token::StellarAssetClient;
-use soroban_sdk::{testutils::Address as _, testutils::Ledger as _, Address, Env, Map};
+use soroban_sdk::{testutils::Address as _, testutils::Ledger as _, Address, Env, Map, Symbol};
 
 extern crate std;
 
@@ -76,6 +76,44 @@ fn test_init_already_initialized() {
         &1u32,
     );
     assert_eq!(result, Err(Ok(Error::AlreadyInitialized)));
+}
+
+#[test]
+fn test_error_to_symbol_snapshot() {
+    let env = Env::default();
+
+    let cases = [
+        (Error::NotInitialized, "not_initialized"),
+        (Error::AlreadyInitialized, "already_initialized"),
+        (Error::NegativeAmount, "negative_amount"),
+        (Error::Unauthorized, "unauthorized"),
+        (Error::NoStrategies, "no_strategies"),
+        (Error::ContractPaused, "contract_paused"),
+        (Error::DepositCapExceeded, "deposit_cap_exceeded"),
+        (Error::WithdrawalCapExceeded, "withdrawal_cap_exceeded"),
+        (Error::StaleOracleData, "stale_oracle_data"),
+        (Error::InvalidTimestamp, "invalid_timestamp"),
+        (Error::SlippageExceeded, "slippage_exceeded"),
+        (Error::ProposalNotFound, "proposal_not_found"),
+        (Error::AlreadyApproved, "already_approved"),
+        (Error::ProposalExecuted, "proposal_executed"),
+        (Error::InsufficientApprovals, "insufficient_approvals"),
+        (Error::TimelockNotElapsed, "timelock_not_elapsed"),
+        (Error::WithdrawalNotFound, "withdrawal_not_found"),
+        (Error::QueueEmpty, "queue_empty"),
+        (Error::InvalidAllocationSum, "invalid_allocation_sum"),
+        (Error::NegativeAllocation, "negative_allocation"),
+        (Error::ZeroAddressStrategy, "zero_address_strategy"),
+        (Error::HarvestTooEarly, "harvest_too_early"),
+        (Error::ReentrantCall, "reentrant_call"),
+        (Error::UserBlocked, "user_blocked"),
+        (Error::CircuitBreakerActive, "circuit_breaker_active"),
+        (Error::EmergencyShutdownActive, "emergency_shutdown_active"),
+    ];
+
+    for (error, expected) in cases {
+        assert_eq!(error.to_symbol(&env), Symbol::new(&env, expected));
+    }
 }
 
 #[test]
@@ -379,7 +417,7 @@ fn test_deposit_slippage_exact_minimum_passes() {
     env.mock_all_auths_allowing_non_root_auth();
 
     let token_admin = Address::generate(&env);
-    let (token_id, stellar_asset_client, _) = create_token_contract(&env, &token_admin);
+    let (token_id, stellar_asset_client, token_client) = create_token_contract(&env, &token_admin);
 
     let contract_id = env.register_contract(None, VolatilityShield);
     let client = VolatilityShieldClient::new(&env, &contract_id);
@@ -388,6 +426,7 @@ fn test_deposit_slippage_exact_minimum_passes() {
     let oracle = Address::generate(&env);
     let treasury = Address::generate(&env);
     let guardians = soroban_sdk::vec![&env, admin.clone()];
+
     client.init(
         &admin, &token_id, &oracle, &treasury, &0u32, &guardians, &1u32,
     );
