@@ -12,6 +12,7 @@ import { StaleBadge } from "@/components/StaleBadge";
 import { VaultOverviewSkeleton } from "@/components/ui/skeleton";
 import { useRealtimeVault } from "@/hooks/use-realtime-vault";
 import { ConnectionStatusIndicator } from "@/components/ConnectionStatusIndicator";
+import { VaultHealthBanner } from "@/components/VaultHealthBanner";
 import type { VaultMetrics } from "@/lib/stellar";
 
 export function VaultOverviewCard() {
@@ -45,9 +46,25 @@ export function VaultOverviewCard() {
   const totalShares = parseFloat(metrics?.totalShares || "0") / 1e7;
   const sharePrice = parseFloat(metrics?.sharePrice || "1.0000000");
   const userBalance = optimisticBalance;
+  const unhealthyStrategiesCount = Number(
+    (metrics as VaultMetrics & { unhealthyStrategiesCount?: number })?.unhealthyStrategiesCount ?? 0
+  );
+  const vaultPaused = Boolean(
+    (metrics as VaultMetrics & { vaultPaused?: boolean; isPaused?: boolean })?.vaultPaused ??
+      (metrics as VaultMetrics & { isPaused?: boolean })?.isPaused
+  );
+  const cascadeHalt = Boolean(
+    (metrics as VaultMetrics & { cascadeHalt?: boolean; cascadeHaltActive?: boolean })?.cascadeHalt ??
+      (metrics as VaultMetrics & { cascadeHaltActive?: boolean })?.cascadeHaltActive
+  );
 
   return (
     <div className="rounded-lg border bg-card p-6 shadow-sm">
+      <VaultHealthBanner
+        unhealthyStrategiesCount={unhealthyStrategiesCount}
+        vaultPaused={vaultPaused}
+        cascadeHalt={cascadeHalt}
+      />
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Shield className="w-6 h-6 text-primary" />
